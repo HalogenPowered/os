@@ -1,0 +1,12 @@
+[package]
+name = "halogen-os"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = ["boot"]
+
+[dependencies]
+bootloader = "0.10.12"
+noto-sans-mono-bitmap = "0.1.5"
+paste = "1.0.6"

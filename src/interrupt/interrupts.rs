@@ -1,10 +1,15 @@
 use lazy_static::lazy_static;
+use pic8259::ChainedPics;
+use spin::Mutex;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
-use crate::{halt_loop, println};
+use crate::{gdt, halt_loop, print, println};
+use super::irq::*;
 
 lazy_static! {
     static ref TABLE: InterruptDescriptorTable = {
         let mut table = InterruptDescriptorTable::new();
+
+        // Set the handlers for all the exceptions
         table.divide_error.set_handler_fn(handle_divide_error);
         table.debug.set_handler_fn(handle_debug);
         table.non_maskable_interrupt.set_handler_fn(handle_non_maskable_interrupt);
@@ -13,7 +18,10 @@ lazy_static! {
         table.bound_range_exceeded.set_handler_fn(handle_bound_range_exceeded);
         table.invalid_opcode.set_handler_fn(handle_invalid_opcode);
         table.device_not_available.set_handler_fn(handle_device_not_available);
-        table.double_fault.set_handler_fn(handle_double_fault);
+        unsafe {
+            table.double_fault.set_handler_fn(handle_double_fault)
+                .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
+        }
         table.invalid_tss.set_handler_fn(handle_invalid_tss);
         table.segment_not_present.set_handler_fn(handle_segment_not_present);
         table.stack_segment_fault.set_handler_fn(handle_stack_segment_fault);
@@ -26,6 +34,9 @@ lazy_static! {
         table.virtualization.set_handler_fn(handle_virtualization);
         table.vmm_communication_exception.set_handler_fn(handle_vmm_communication);
         table.security_exception.set_handler_fn(handle_security);
+
+        // Setup hardware interrupts
+        table[InterruptIndex::Timer.as_usize()].set_handler_fn(handle_timer);
         table
     };
 }
@@ -33,6 +44,8 @@ lazy_static! {
 pub fn init_idt() {
     TABLE.load()
 }
+
+/* --- Exception interrupt handlers --- */
 
 extern "x86-interrupt" fn handle_divide_error(frame: InterruptStackFrame) {
     println!("Cannot divide by zero! {:?}", frame);
@@ -118,4 +131,11 @@ extern "x86-interrupt" fn handle_vmm_communication(frame: InterruptStackFrame, e
 
 extern "x86-interrupt" fn handle_security(frame: InterruptStackFrame, error_code: u64) {
     println!("Security error! {:?} (error code: {})", frame, error_code);
+}
+
+/* --- Hardware interrupt handlers --- */
+
+extern "x86-interrupt" fn handle_timer(_frame: InterruptStackFrame) {
+    print!(".");
+    unsafe { PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8()); }
 }

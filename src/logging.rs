@@ -1,5 +1,5 @@
 use core::slice;
-use bootloader::boot_info::{FrameBuffer, FrameBufferInfo};
+use bootloader::boot_info::FrameBuffer;
 use conquer_once::spin::OnceCell;
 use log::LevelFilter;
 use printk::LockedPrintk;

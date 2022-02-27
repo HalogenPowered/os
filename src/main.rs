@@ -9,12 +9,9 @@ extern crate alloc;
 mod allocator;
 mod logging;
 mod memory;
-mod interrupts;
+mod interrupt;
+mod gdt;
 
-use alloc::boxed::Box;
-use alloc::rc::Rc;
-use alloc::vec;
-use alloc::vec::Vec;
 use bootloader::boot_info::Optional;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
@@ -26,19 +23,22 @@ use crate::memory::BootInfoFrameAllocator;
 entry_point!(main);
 
 fn main(boot_info: &'static mut BootInfo) -> ! {
-    // Initialize the terminal so we can actually write things to the screen
-    terminal_init(boot_info);
+    init(boot_info);
     println!("Starting Halogen OS version 0.1.0.");
 
-    // Print information about the currently running CPU (from CPUID)
-    //write_cpu_info();
-    // Print information about the available memory regions given to us by the bootloader
-    //write_memory_info(boot_info);
     // Setup heap memory so we can perform heap allocations
-    setup_heap_memory(boot_info);
+    //setup_heap_memory(boot_info);
 
-    println!("It did not crash!");
+    //println!("It did not crash!");
     halt_loop()
+}
+
+fn init(boot_info: &'static BootInfo) {
+    terminal_init(boot_info);
+    gdt::init();
+    interrupt::init_idt();
+    unsafe { interrupt::PICS.lock().initialize() };
+    x86_64::instructions::interrupts::enable();
 }
 
 fn terminal_init(info: &'static BootInfo) {
@@ -47,40 +47,6 @@ fn terminal_init(info: &'static BootInfo) {
         Optional::None => return,
     };
     printk_init(framebuffer);
-}
-
-fn write_cpu_info() {
-    let cpuid = CpuId::new();
-    println!("Processor Details:");
-    if let Some(brand) = cpuid.get_processor_brand_string() {
-        println!("* Brand: {}", brand.as_str());
-    }
-    if let Some(vendor) = cpuid.get_vendor_info() {
-        println!("* Vendor: {}", vendor);
-    };
-    if let Some(info) = cpuid.get_feature_info() {
-        println!("* Family: {}", info.family_id());
-        println!("* Model: {}", info.model_id());
-    };
-}
-
-fn write_memory_info(boot_info: &'static BootInfo) {
-    println!("Memory regions length: {}", boot_info.memory_regions.len());
-    let mut total_memory = 0;
-    for i in 0..boot_info.memory_regions.len() - 2 {
-        let region = boot_info.memory_regions[i];
-        println!("Memory region #{}:", i);
-        println!("* Start: {} (hex: 0x{:x})", region.start, region.start);
-        println!("* End: {} (hex: 0x{:x})", region.end, region.end);
-        println!("* Size: {} (bytes: {}, KB: {})",
-                 region.end - region.start,
-                 (region.end - region.start) * 8,
-                 ((region.end - region.start) * 8) / 1024
-        );
-        println!("* Kind: {:?}", region.kind);
-        total_memory += (region.end - region.start) * 8;
-    }
-    println!("Total memory (bytes): {}", total_memory);
 }
 
 fn setup_heap_memory(boot_info: &'static BootInfo) {

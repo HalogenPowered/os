@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(alloc_error_handler)]
+#![feature(abi_x86_interrupt)]
 #![no_std]
 #![no_main]
 
@@ -8,6 +9,7 @@ extern crate alloc;
 mod allocator;
 mod logging;
 mod memory;
+mod interrupts;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -34,21 +36,6 @@ fn main(boot_info: &'static mut BootInfo) -> ! {
     //write_memory_info(boot_info);
     // Setup heap memory so we can perform heap allocations
     setup_heap_memory(boot_info);
-
-    let heap_value = Box::new(41);
-    println!("Heap value at {:p}", heap_value);
-
-    let mut vec = Vec::new();
-    for i in 0..500 {
-        vec.push(i);
-    }
-    println!("Vec at {:p}", vec.as_slice());
-
-    let reference_counted = Rc::new(vec![1, 2, 3]);
-    let cloned_reference = reference_counted.clone();
-    println!("Current reference count is {}", Rc::strong_count(&cloned_reference));
-    core::mem::drop(reference_counted);
-    println!("Reference count is {} now", Rc::strong_count(&cloned_reference));
 
     println!("It did not crash!");
     halt_loop()

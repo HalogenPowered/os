@@ -1,8 +1,7 @@
-use core::fmt::{Arguments, Write};
-use core::{ptr, slice};
-use bootloader::boot_info::{FrameBufferInfo, PixelFormat};
-use noto_sans_mono_bitmap::{get_bitmap, get_bitmap_width, BitmapChar, BitmapHeight, FontWeight};
 use crate::lateinit::LateInit;
+use bootloader::boot_info::{FrameBufferInfo, PixelFormat};
+use core::{fmt::Write, ptr, slice};
+use noto_sans_mono_bitmap::{get_bitmap, get_bitmap_width, BitmapChar, BitmapHeight, FontWeight};
 
 const LINE_SPACING: usize = 0;
 const LOG_SPACING: usize = 2;

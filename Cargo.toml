@@ -10,3 +10,4 @@ members = ["boot"]
 bootloader = "0.10.12"
 noto-sans-mono-bitmap = "0.1.5"
 paste = "1.0.6"
+raw-cpuid = "10.2.0"

@@ -1,32 +1,65 @@
 #![feature(allocator_api)]
+#![feature(alloc_error_handler)]
 #![no_std]
 #![no_main]
 
-//mod allocator;
-mod logging;
+extern crate alloc;
 
+mod allocator;
+mod logging;
+mod memory;
+
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::vec;
+use alloc::vec::Vec;
 use bootloader::boot_info::Optional;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use raw_cpuid::CpuId;
+use x86_64::VirtAddr;
 use crate::logging::printk_init;
+use crate::memory::BootInfoFrameAllocator;
 
 entry_point!(main);
 
 fn main(boot_info: &'static mut BootInfo) -> ! {
+    // Initialize the terminal so we can actually write things to the screen
+    terminal_init(boot_info);
     println!("Starting Halogen OS version 0.1.0.");
-    write_cpu_info();
-    write_memory_info(boot_info);
-    loop {}
+
+    // Print information about the currently running CPU (from CPUID)
+    //write_cpu_info();
+    // Print information about the available memory regions given to us by the bootloader
+    //write_memory_info(boot_info);
+    // Setup heap memory so we can perform heap allocations
+    setup_heap_memory(boot_info);
+
+    let heap_value = Box::new(41);
+    println!("Heap value at {:p}", heap_value);
+
+    let mut vec = Vec::new();
+    for i in 0..500 {
+        vec.push(i);
+    }
+    println!("Vec at {:p}", vec.as_slice());
+
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!("Current reference count is {}", Rc::strong_count(&cloned_reference));
+    core::mem::drop(reference_counted);
+    println!("Reference count is {} now", Rc::strong_count(&cloned_reference));
+
+    println!("It did not crash!");
+    halt_loop()
 }
 
-fn terminal_init(info: &'static mut BootInfo) {
-    let framebuffer = match &mut info.framebuffer {
+fn terminal_init(info: &'static BootInfo) {
+    let framebuffer = match &info.framebuffer {
         Optional::Some(value) => value,
         Optional::None => return,
     };
-    let info = framebuffer.info().clone();
-    printk_init(framebuffer.buffer_mut(), info);
+    printk_init(framebuffer);
 }
 
 fn write_cpu_info() {
@@ -44,7 +77,7 @@ fn write_cpu_info() {
     };
 }
 
-fn write_memory_info(boot_info: &BootInfo) {
+fn write_memory_info(boot_info: &'static BootInfo) {
     println!("Memory regions length: {}", boot_info.memory_regions.len());
     let mut total_memory = 0;
     for i in 0..boot_info.memory_regions.len() - 2 {
@@ -63,7 +96,21 @@ fn write_memory_info(boot_info: &BootInfo) {
     println!("Total memory (bytes): {}", total_memory);
 }
 
+fn setup_heap_memory(boot_info: &'static BootInfo) {
+    let physical_memory_offset = VirtAddr::new(boot_info.physical_memory_offset.into_option().unwrap());
+    let mut mapper = unsafe { memory::init(physical_memory_offset) };
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::new(&boot_info.memory_regions) };
+    allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed!");
+}
+
 #[panic_handler]
-fn panic_handler(_info: &PanicInfo) -> ! {
-    loop {}
+fn panic_handler(info: &PanicInfo) -> ! {
+    println!("{}", info);
+    halt_loop();
+}
+
+fn halt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
 }

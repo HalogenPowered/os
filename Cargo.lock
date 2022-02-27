@@ -64,6 +64,7 @@ version = "0.1.0"
 dependencies = [
  "bootloader",
  "conquer-once",
+ "linked_list_allocator",
  "log",
  "printk",
  "raw-cpuid",
@@ -75,6 +76,15 @@ name = "json"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
+
+[[package]]
+name = "linked_list_allocator"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "549ce1740e46b291953c4340adcd74c59bcf4308f4cac050fd33ba91b7168f4a"
+dependencies = [
+ "spinning_top",
+]
 
 [[package]]
 name = "locate-cargo-manifest"

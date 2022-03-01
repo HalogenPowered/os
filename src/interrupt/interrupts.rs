@@ -36,7 +36,7 @@ lazy_static! {
         table.security_exception.set_handler_fn(handle_security);
 
         // Setup hardware interrupts
-        table[InterruptIndex::Timer.as_usize()].set_handler_fn(handle_timer);
+        super::initialize_irqs(&mut table);
         table
     };
 }
@@ -138,4 +138,9 @@ extern "x86-interrupt" fn handle_security(frame: InterruptStackFrame, error_code
 extern "x86-interrupt" fn handle_timer(_frame: InterruptStackFrame) {
     print!(".");
     unsafe { PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8()); }
+}
+
+extern "x86-interrupt" fn handle_keyboard(frame: InterruptStackFrame) {
+    print!("k");
+    unsafe { PICS.lock().notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8()); }
 }

@@ -1,5 +1,5 @@
 mod interrupts;
-mod irq;
+pub(self) mod irq;
 
 pub use interrupts::*;
 pub use irq::*;

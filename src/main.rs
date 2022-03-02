@@ -1,52 +1,33 @@
-#![feature(allocator_api)]
-#![feature(alloc_error_handler)]
-#![feature(abi_x86_interrupt)]
 #![no_std]
 #![no_main]
+#![feature(custom_test_frameworks)]
+#![test_runner(halogen_os::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 
 extern crate alloc;
 
-mod allocator;
-mod logging;
-mod memory;
-mod interrupt;
-mod gdt;
-
-use bootloader::boot_info::Optional;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
+use halogen_os::{allocator, halt_loop, init, println};
+use halogen_os::memory::{self, BootInfoFrameAllocator};
 use raw_cpuid::CpuId;
 use x86_64::VirtAddr;
-use crate::logging::printk_init;
-use crate::memory::BootInfoFrameAllocator;
 
-entry_point!(main);
+entry_point!(kernel_main);
 
-fn main(boot_info: &'static mut BootInfo) -> ! {
+fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
     init(boot_info);
+    #[cfg(not(test))]
     println!("Starting Halogen OS version 0.1.0.");
 
     // Setup heap memory so we can perform heap allocations
     //setup_heap_memory(boot_info);
 
+    #[cfg(test)]
+    test_main();
+
     //println!("It did not crash!");
     halt_loop()
-}
-
-fn init(boot_info: &'static BootInfo) {
-    terminal_init(boot_info);
-    gdt::init();
-    interrupt::init_idt();
-    unsafe { interrupt::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable();
-}
-
-fn terminal_init(info: &'static BootInfo) {
-    let framebuffer = match &info.framebuffer {
-        Optional::Some(value) => value,
-        Optional::None => return,
-    };
-    printk_init(framebuffer);
 }
 
 fn setup_heap_memory(boot_info: &'static BootInfo) {
@@ -56,14 +37,23 @@ fn setup_heap_memory(boot_info: &'static BootInfo) {
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed!");
 }
 
+#[cfg(not(test))]
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {
     println!("{}", info);
     halt_loop();
 }
 
-fn halt_loop() -> ! {
-    loop {
-        x86_64::instructions::hlt();
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    halogen_os::test_panic_handler(info)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test_case]
+    fn trivial_assertion() {
+        assert_eq!(1, 1);
     }
 }

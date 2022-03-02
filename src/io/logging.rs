@@ -12,6 +12,9 @@ pub fn printk_init(buffer: &'static FrameBuffer) {
     log::set_max_level(LevelFilter::Trace);
 }
 
+// This is really, really unsafe, and is really not an example to follow,
+// but it works fine, and gets around Rust's borrowing rules that prohibit us from
+// passing a mutable FrameBuffer to the init function.
 fn buf_to_mut(buffer: &[u8]) -> &mut [u8] {
     unsafe { slice::from_raw_parts_mut(buffer.as_ptr() as *mut u8, buffer.len()) }
 }

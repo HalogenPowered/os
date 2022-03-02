@@ -1,4 +1,3 @@
-use core::alloc::Layout;
 use linked_list_allocator::LockedHeap;
 use x86_64::{
     structures::paging::{
@@ -31,9 +30,4 @@ pub fn init_heap(
     }
     unsafe { ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE); }
     Ok(())
-}
-
-#[alloc_error_handler]
-fn alloc_error_handler(layout: Layout) -> ! {
-    panic!("Allocation error: {:?}", layout)
 }

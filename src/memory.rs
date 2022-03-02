@@ -16,17 +16,6 @@ unsafe fn active_level_4_table(physical_memory_offset: VirtAddr) -> &'static mut
     &mut *page_table_ptr
 }
 
-pub fn create_example_mapping(
-    page: Page,
-    mapper: &mut OffsetPageTable,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>
-) {
-    let frame = PhysFrame::containing_address(PhysAddr::new(0xB8000));
-    let flags = PageTableFlags::PRESENT | PageTableFlags::WRITABLE;
-    let map_to_result = unsafe { mapper.map_to(page, frame, flags, frame_allocator) };
-    map_to_result.expect("map_to failed!").flush()
-}
-
 pub struct BootInfoFrameAllocator {
     memory_regions: &'static MemoryRegions,
     next: usize

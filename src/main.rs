@@ -8,25 +8,30 @@ extern crate alloc;
 
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use halogen_os::{allocator, halt_loop, init, println};
+use halogen_os::{allocator, halt_loop, init, init_headless, println};
 use halogen_os::memory::{self, BootInfoFrameAllocator};
-use raw_cpuid::CpuId;
 use x86_64::VirtAddr;
 
 entry_point!(kernel_main);
 
 fn kernel_main(boot_info: &'static mut BootInfo) -> ! {
+    #[cfg(test)]
+    run_tests();
+
     init(boot_info);
-    #[cfg(not(test))]
     println!("Starting Halogen OS version 0.1.0.");
 
     // Setup heap memory so we can perform heap allocations
-    //setup_heap_memory(boot_info);
+    setup_heap_memory(boot_info);
 
-    #[cfg(test)]
+    println!("It did not crash!");
+    halt_loop()
+}
+
+#[cfg(test)]
+fn run_tests() -> ! {
+    init_headless();
     test_main();
-
-    //println!("It did not crash!");
     halt_loop()
 }
 

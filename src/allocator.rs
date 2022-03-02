@@ -6,8 +6,8 @@ use x86_64::{
     VirtAddr
 };
 
-const HEAP_START: usize = 0x444444440000;
-const HEAP_SIZE: usize = 100 * 1024;
+pub const HEAP_START: usize = 0x444444440000;
+pub const HEAP_SIZE: usize = 100 * 1024;
 
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();

@@ -20,8 +20,11 @@ pub mod gdt;
 pub mod io;
 
 pub fn init(boot_info: &'static BootInfo) {
-    #[cfg(not(test))]
     io::init(boot_info);
+    init_headless();
+}
+
+pub fn init_headless() {
     gdt::init();
     interrupt::init_idt();
     unsafe { interrupt::PICS.lock().initialize() };
@@ -78,7 +81,7 @@ entry_point!(kernel_test);
 
 #[cfg(test)]
 fn kernel_test(boot_info: &'static mut BootInfo) -> ! {
-    init(boot_info);
+    init_headless();
     test_main();
     halt_loop();
 }

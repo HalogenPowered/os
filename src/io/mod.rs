@@ -1,4 +1,4 @@
-mod logging;
+pub mod logging;
 pub mod serial;
 
 use bootloader::boot_info::Optional;
@@ -9,5 +9,5 @@ pub fn init(boot_info: &'static BootInfo) {
         Optional::Some(value) => value,
         Optional::None => return,
     };
-    logging::printk_init(framebuffer);
+    logging::init(framebuffer);
 }

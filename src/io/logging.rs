@@ -1,15 +1,16 @@
+use core::fmt::{Arguments, Write};
 use core::slice;
 use bootloader::boot_info::FrameBuffer;
 use conquer_once::spin::OnceCell;
 use log::LevelFilter;
-use printk::LockedPrintk;
+use printk::Printk;
+use spin::{Mutex, Once};
+use x86_64::instructions::interrupts;
 
-static PRINTK: OnceCell<LockedPrintk> = OnceCell::uninit();
+static PRINTK: Once<Mutex<Printk>> = Once::new();
 
-pub fn printk_init(buffer: &'static FrameBuffer) {
-    let kernel_logger = PRINTK.get_or_init(move || LockedPrintk::new(buf_to_mut(buffer.buffer()), buffer.info()));
-    log::set_logger(kernel_logger).expect("Logger already set!");
-    log::set_max_level(LevelFilter::Trace);
+pub fn init(buffer: &'static FrameBuffer) {
+    PRINTK.call_once(|| Mutex::new(Printk::new(buf_to_mut(buffer.buffer()), buffer.info())));
 }
 
 // This is really, really unsafe, and is really not an example to follow,
@@ -21,11 +22,18 @@ fn buf_to_mut(buffer: &[u8]) -> &mut [u8] {
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => (log::info!($($arg)*))
+    ($($arg:tt)*) => ($crate::io::logging::_print(format_args!($($arg)*)))
 }
 
 #[macro_export]
 macro_rules! println {
     () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ($crate::print!($($arg)*))
+    ($fmt:expr) => ($crate::print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => ($crate::print!(concat!($fmt, "\n"), $($arg)*));
+}
+
+pub fn _print(args: Arguments) {
+    interrupts::without_interrupts(|| {
+        PRINTK.get().unwrap().lock().write_fmt(args).expect("Printing to logger failed!");
+    })
 }
